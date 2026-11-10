@@ -164,6 +164,24 @@ OUTSIDE ──落入多边形──▶ INSIDE（累计停留）──连续命�
 
 ---
 
+### 复现训练
+
+```bash
+# 1) 把标注好的 YOLO 格式数据集整理成 train/val 并生成 data.yaml
+python tools/build_dataset.py --src data/ebike_scene --out data/parking_yolo \
+       --val-ratio 0.15 --seed 42
+
+# 2) 域对齐微调（参数与 docs/实验结果.md 记录一致）
+yolo detect train model=yolov8n.pt data=data/parking_yolo/data.yaml \
+     imgsz=416 epochs=40 batch=16 lr0=0.002 seed=0 device=cpu
+```
+
+两点如实说明：
+
+- 训练中途因关机中断过一次，从 `last.pt` 续训至 40 轮完成；
+- 评测用的是仓库内 `tools/eval_compare.py`（同一验证集 128 张 / 244 个真值框、imgsz=416），
+  预训练基线按 COCO 的 motorcycle(3) → 数据集 0 重映射后同口径评测。
+
 ## 实验记录
 
 ### 域对齐微调 vs 预训练基线
