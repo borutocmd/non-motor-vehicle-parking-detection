@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 模型权重（Ultralytics 首次运行会自动下载 yolov8n.pt）
+weights/*.pt
+!weights/.gitkeep
+
+# 运行产物
+outputs/
+code/outputs/
+web/uploads/
+*.log
+runs/
+.render/
+.rpt/
+.rs/
+
+# 数据集（体积大，按 docs/数据清洗记录.md 自行构建）
+data/
+*.zip
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

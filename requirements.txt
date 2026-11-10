@@ -1,0 +1,7 @@
+# 运行环境（Python 3.10+）
+# 安装：pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+ultralytics>=8.2.0
+opencv-python>=4.8.0
+numpy>=1.24
+PyYAML>=6.0
+Pillow>=10.0

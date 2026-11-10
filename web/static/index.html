@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>非机动车违停智能检测系统 · 演示</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">CV</div>
+    <div>
+      <h1>非机动车违停智能检测系统</h1>
+      <p>YOLOv8 检测 · OpenCV 多边形 ROI · 双层告警判定</p>
+    </div>
+  </div>
+  <div class="badge" id="engine-badge">就绪</div>
+</header>
+
+<nav class="steps" id="steps">
+  <div class="step active" data-step="1"><span>1</span>选择输入</div>
+  <div class="step" data-step="2"><span>2</span>画禁停区 / 调参</div>
+  <div class="step" data-step="3"><span>3</span>运行检测</div>
+  <div class="step" data-step="4"><span>4</span>查看结果</div>
+</nav>
+
+<main>
+  <!-- 1 输入 -->
+  <section class="card" id="card-input">
+    <div class="card-head"><h2>① 选择视频源</h2><span class="hint">示例视频可直接试用，也可上传自己的监控视频</span></div>
+    <div class="samples" id="samples"></div>
+    <div class="upload-row">
+      <label class="upload-btn">
+        <input type="file" id="file-input" accept="video/*" hidden>
+        上传本地视频
+      </label>
+      <span class="upload-info" id="upload-info">支持 mp4 / avi / mov</span>
+    </div>
+  </section>
+
+  <!-- 2 禁停区 + 参数 -->
+  <section class="card" id="card-params">
+    <div class="card-head"><h2>② 画禁停区并设置参数</h2>
+      <button class="ghost" id="btn-random">随机参数（每次结果不同）</button>
+    </div>
+
+    <div class="roi-block">
+      <div class="roi-tools">
+        <span class="roi-title">禁停区（多边形）</span>
+        <button class="ghost sm" id="roi-undo">撤销顶点</button>
+        <button class="ghost sm" id="roi-clear">清空</button>
+        <button class="ghost sm" id="roi-default">用默认区域</button>
+        <button class="ghost sm" id="roi-full">全画面</button>
+        <span class="roi-count" id="roi-count">0 个顶点</span>
+      </div>
+      <div class="roi-stage" id="roi-stage">
+        <img id="roi-bg" alt="">
+        <canvas id="roi-canvas"></canvas>
+        <div class="roi-empty" id="roi-empty">先选择视频，画面加载后可在此点击画禁停区</div>
+      </div>
+      <p class="hint">在画面上依次点击添加顶点（≥3 个），围出禁止停车的区域；不画则自动使用该视频的默认区域。</p>
+    </div>
+
+    <div class="params">
+      <div class="param">
+        <label>置信度阈值 <b id="conf-val">0.35</b></label>
+        <input type="range" id="conf" min="0.15" max="0.75" step="0.01" value="0.35">
+        <small>越低越灵敏，误检也更多</small>
+      </div>
+      <div class="param">
+        <label>停留判定时长 <b id="dwell-val">8</b> 秒</label>
+        <input type="range" id="dwell" min="2" max="20" step="1" value="8">
+        <small>超过该时长由"入侵"升级为"违停"</small>
+      </div>
+      <div class="param">
+        <label>告警模式</label>
+        <select id="mode">
+          <option value="both">双层（进入告警 + 停留升级）</option>
+          <option value="intrusion">仅区域入侵</option>
+          <option value="dwell">仅停留判定</option>
+        </select>
+      </div>
+      <div class="param">
+        <label>检测模型</label>
+        <select id="weights"></select>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 运行 -->
+  <section class="card" id="card-run">
+    <div class="card-head"><h2>③ 运行检测</h2>
+      <div class="actions">
+        <button class="primary" id="btn-run">开始检测</button>
+        <button class="ghost" id="btn-cancel" disabled>中止</button>
+      </div>
+    </div>
+
+    <div class="pipeline" id="pipeline"></div>
+
+    <div class="progress-wrap">
+      <div class="progress"><div class="bar" id="bar"></div></div>
+      <div class="progress-meta">
+        <span id="progress-text">等待开始</span>
+        <span id="progress-time"></span>
+      </div>
+    </div>
+
+    <div class="live">
+      <img id="preview" alt="实时预览" hidden>
+      <div class="live-empty" id="live-empty">运行后此处显示实时画面</div>
+    </div>
+  </section>
+
+  <!-- 4 结果 -->
+  <section class="card" id="card-result">
+    <div class="card-head"><h2>④ 检测结果</h2><span class="hint" id="result-hint"></span></div>
+
+    <div class="stats" id="stats">
+      <div class="stat"><span class="num" id="stat-frames">0</span><span class="lbl">处理帧数</span></div>
+      <div class="stat warn"><span class="num" id="stat-intrusion">0</span><span class="lbl">入侵告警</span></div>
+      <div class="stat danger"><span class="num" id="stat-violation">0</span><span class="lbl">违停告警</span></div>
+      <div class="stat"><span class="num" id="stat-time">0s</span><span class="lbl">耗时</span></div>
+    </div>
+
+    <div class="downloads" id="downloads"></div>
+
+    <h3 class="sub">告警时间线</h3>
+    <div class="timeline" id="timeline"><p class="empty">暂无告警</p></div>
+
+    <h3 class="sub">取证截图</h3>
+    <div class="shots" id="shots"><p class="empty">暂无截图</p></div>
+
+    <div class="video-wrap" id="video-wrap" hidden>
+      <h3 class="sub">标注视频</h3>
+      <video id="result-video" controls></video>
+    </div>
+  </section>
+</main>
+
+<div class="lightbox" id="lightbox" hidden><img id="lightbox-img" alt=""></div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+# 非机动车违停智能检测系统 · 配置
+# 非机动车违停智能检测系统 · 主配置
+
+input:
+  source: "samples/parking_demo.mp4"   # 视频路径；填 0 表示摄像头
+  loop: false                          # 视频循环播放（调试用）
+
+model:
+  # 二选一：
+  #   weights/yolov8n.pt          COCO 预训练（80 类）—— 开箱即用，无需自行训练
+  #   weights/ebike_finetuned.pt  本项目微调（仅 2 类，检测不到汽车）
+  weights: "weights/yolov8n.pt"
+  conf: 0.35                           # 置信度阈值
+  iou: 0.50                            # NMS IoU
+  imgsz: 640
+  device: "cpu"                        # cpu / cuda:0
+  # 检测目标：自行车 / 电动车(摩托车) / 汽车 等交通工具
+  # COCO 类别 id：1=bicycle, 3=motorcycle, 2=car
+  class_ids: [1, 3, 2]
+  class_names:
+    1: bicycle
+    3: motorcycle
+    2: car
+  mock: false                          # true = 用颜色检测器自测（无需权重）
+
+roi:
+  polygons_file: "configs/roi.json"    # 多边形禁停区定义
+  active: "lot_scene"                      # 当前启用的区域名
+  draw_hint: true
+
+judge:
+  mode: "both"                         # intrusion=进入即告警 / dwell=停留超时 / both=两层都报
+  anchor: "bottom_center"              # 车辆位置锚点：检测框底边中点
+  dwell_seconds: 8.0                   # 停留超过该时长升级为「违停」
+  min_hits: 5                          # 停留判定需要的连续命中帧数
+  intrusion_hits: 2                    # 入侵（进入即告警）需要的连续帧数，防抖
+  cooldown_seconds: 30.0               # 同一目标重复告警冷却
+  require_inside: true
+  # 只有非机动车触发告警；汽车会被检测并显示，但不告警
+  alarm_class_ids: [1, 3]
+
+tracker:
+  iou_threshold: 0.30
+  max_age: 30
+
+output:
+  dir: "outputs"
+  save_screenshot: true
+  screenshot_prefix: "alarm"
+  save_csv: true
+  csv_name: "alarms.csv"
+  save_annotated_video: false
+  show_window: true
+  window_scale: 1.0
+
+visual:
+  font_scale: 0.55
+  thickness: 2
+  color_roi: [0, 215, 255]          # BGR 橙黄
+  color_roi_fill: [0, 215, 255]
+  color_ok: [80, 220, 100]          # 绿：不在区域内
+  color_warn: [0, 165, 255]         # 橙：区域内计时
+  color_intrusion: [0, 120, 255]    # 橙红：已入侵告警
+  color_bad: [50, 50, 235]          # 红：违停
+  color_text: [255, 255, 255]
+  color_panel: [32, 32, 32]
